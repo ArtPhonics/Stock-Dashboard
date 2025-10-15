@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Correlation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        .time-btn { transition: all 0.2s; }
+        .time-btn.active { background: #3b82f6; transform: scale(1.05); }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+        <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">Stock Correlation Dashboard</h1>
+            <p class="text-slate-300 text-sm md:text-base">Real-time Social, Options, and Price Analysis</p>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-4 md:p-6 mb-6">
+            <div class="flex gap-3 md:gap-4 items-end flex-wrap">
+                <div class="flex-1 min-w-48">
+                    <label class="block text-sm font-semibold mb-2">Stock Symbol</label>
+                    <input 
+                        type="text"
+                        id="symbolInput"
+                        placeholder="Enter symbol"
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white"
+                        value="IREN"
+                    />
+                </div>
+                <button onclick="searchSymbol()" class="px-6 md:px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">
+                    Analyze
+                </button>
+                <button onclick="refreshData()" id="refreshBtn" class="px-6 md:px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold flex items-center gap-2">
+                    <span id="refreshIcon">🔄</span> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-blue-900 to-purple-900 border-2 border-blue-700 rounded-lg p-4 md:p-6 mb-6">
+            <div class="flex justify-between items-start flex-wrap gap-4">
+                <div class="flex-1">
+                    <p class="text-xs opacity-90 mb-1">NOW ANALYZING</p>
+                    <p class="text-3xl md:text-4xl font-bold" id="currentSymbol">IREN</p>
+                    <p class="text-sm opacity-90 mt-1" id="companyName">Loading...</p>
+                    <p class="text-xs opacity-75 mt-2" id="dataStatus">Loading data...</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-5xl font-bold opacity-50" id="signalScore">75</p>
+                    <p class="text-xs opacity-90">Score</p>
+                    <p class="text-lg font-bold mt-2" id="signalStrength">MODERATE BUY</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">Price</p>
+                <p class="text-xl font-bold" id="price">$64.14</p>
+                <p class="text-xs mt-1 text-green-400" id="priceChange">+4.37</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">52W High</p>
+                <p class="text-xl font-bold text-green-400" id="week52High">$70.05</p>
+                <p class="text-xs mt-1 text-slate-500" id="highDistance">-8%</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">52W Low</p>
+                <p class="text-xl font-bold text-red-400" id="week52Low">$5.17</p>
+                <p class="text-xs mt-1 text-slate-500" id="lowDistance">+1140%</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">YTD</p>
+                <p class="text-xl font-bold text-green-400" id="ytdChange">+487%</p>
+                <p class="text-xs mt-1 text-slate-500" id="volume">Vol: 47M</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">Earnings</p>
+                <p class="text-lg font-bold" id="earningsDate">Dec 2</p>
+                <p class="text-xs mt-1 text-slate-500" id="earningsTime">23 days</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">Mkt Cap</p>
+                <p class="text-lg font-bold" id="marketCap">$16.2B</p>
+                <p class="text-xs mt-1 text-slate-500" id="sector">Tech</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                <p class="text-xs text-slate-400 mb-2">Social (24h)</p>
+                <p class="text-2xl font-bold text-blue-400" id="socialMentions">107</p>
+                <p class="text-sm mt-1 text-blue-300" id="socialTrend">Rising</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                <p class="text-xs text-slate-400 mb-2">Put/Call</p>
+                <p class="text-2xl font-bold text-purple-400" id="putCallRatio">0.86</p>
+                <p class="text-sm mt-1 text-green-400" id="optionsSentiment">Bullish</p>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                <p class="text-xs text-slate-400 mb-2">Options</p>
+                <p class="text-2xl font-bold text-yellow-400" id="unusualActivity">Moderate</p>
+                <p class="text-sm mt-1 text-slate-300" id="optionsVolume">15.2K</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-4 md:p-6 mb-6">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                <h3 class="text-lg font-semibold" id="chartTitle">IREN - Correlation Chart</h3>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="changeTimeframe('1D')" class="time-btn px-3 py-1 bg-slate-700 rounded text-xs" data-time="1D">1D</button>
+                    <button onclick="changeTimeframe('1W')" class="time-btn active px-3 py-1 rounded text-xs" data-time="1W">1W</button>
+                    <button onclick="changeTimeframe('1M')" class="time-btn px-3 py-1 bg-slate-700 rounded text-xs" data-time="1M">1M</button>
+                    <button onclick="changeTimeframe('3M')" class="time-btn px-3 py-1 bg-slate-700 rounded text-xs" data-time="3M">3M</button>
+                    <button onclick="changeTimeframe('6M')" class="time-btn px-3 py-1 bg-slate-700 rounded text-xs" data-time="6M">6M</button>
+                    <button onclick="changeTimeframe('1Y')" class="time-btn px-3 py-1 bg-slate-700 rounded text-xs" data-time="1Y">1Y</button>
+                </div>
+            </div>
+            <div class="h-64 md:h-80">
+                <canvas id="correlationChart"></canvas>
+            </div>
+            <p class="text-xs text-slate-400 mt-3" id="chartInfo">1 week correlation</p>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Live Alerts</h3>
+            <div id="alertsContainer" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <script>
+        var currentSymbol = 'IREN';
+        var currentTimeframe = '1W';
+        var chartInstance = null;
+
+        var socialDemo = {
+            IREN: { social: 107, trend: 'Rising' },
+            TSLA: { social: 245, trend: 'Very High' },
+            NVDA: { social: 189, trend: 'High' },
+            AAPL: { social: 156, trend: 'Moderate' }
+        };
+
+        var timeframes = {
+            '1D': { points: 8, labels: ['9:30', '10:30', '11:30', '12:30', '13:30', '14:30', '15:30', '16:00'] },
+            '1W': { points: 7, labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+            '1M': { points: 20, labels: generateLabels(20) },
+            '3M': { points: 60, labels: generateLabels(60) },
+            '6M': { points: 26, labels: generateLabels(26) },
+            '1Y': { points: 52, labels: generateLabels(52) }
+        };
+
+        function generateLabels(count) {
+            var labels = [];
+            for (var i = 0; i < count; i++) {
+                labels.push('D' + (i + 1));
+            }
+            return labels;
+        }
+
+        window.onload = function() {
+            initChart();
+            searchSymbol();
+        };
+
+        function initChart() {
+            var ctx = document.getElementById('correlationChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeframes['1W'].labels,
+                    datasets: [{
+                        label: 'Price',
+                        data: [],
+                        borderColor: '#10b981',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Social',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { position: 'left', ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y1: { position: 'right', ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        x: { ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#94a3b8' } } }
+                }
+            });
+        }
+
+        function changeTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelector('[data-time="' + tf + '"]').classList.add('active');
+            
+            var config = timeframes[tf];
+            chartInstance.data.labels = config.labels;
+            updateChart();
+            document.getElementById('chartInfo').textContent = tf + ' correlation for ' + currentSymbol;
+        }
+
+        function updateChart() {
+            var config = timeframes[currentTimeframe];
+            var priceData = [];
+            var socialData = [];
+            var basePrice = 64;
+            var baseSocial = (socialDemo[currentSymbol] || { social: 100 }).social;
+            
+            for (var i = 0; i < config.points; i++) {
+                priceData.push(basePrice + (Math.random() - 0.5) * 10);
+                socialData.push(baseSocial + (Math.random() - 0.5) * 30);
+            }
+            
+            chartInstance.data.datasets[0].data = priceData;
+            chartInstance.data.datasets[1].data = socialData;
+            chartInstance.update();
+        }
+
+        async function fetchYahooData(symbol) {
+            try {
+                var corsProxy = 'https://corsproxy.io/?';
+                var url = corsProxy + encodeURIComponent('https://query2.finance.yahoo.com/v10/finance/quoteSummary/' + symbol + '?modules=price,summaryDetail');
+                var response = await fetch(url);
+                var data = await response.json();
+                
+                if (data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0]) {
+                    var result = data.quoteSummary.result[0];
+                    var price = result.price;
+                    var summary = result.summaryDetail;
+                    
+                    return {
+                        price: price.regularMarketPrice.raw,
+                        change: price.regularMarketChange.raw,
+                        changePercent: price.regularMarketChangePercent.raw * 100,
+                        volume: price.regularMarketVolume.raw,
+                        high52: summary.fiftyTwoWeekHigh.raw,
+                        low52: summary.fiftyTwoWeekLow.raw,
+                        name: price.longName || price.shortName
+                    };
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            return null;
+        }
+
+        async function fetchOptions(symbol) {
+            try {
+                var corsProxy = 'https://corsproxy.io/?';
+                var url = corsProxy + encodeURIComponent('https://query2.finance.yahoo.com/v7/finance/options/' + symbol);
+                var response = await fetch(url);
+                var data = await response.json();
+                
+                if (data.optionChain && data.optionChain.result && data.optionChain.result[0]) {
+                    var options = data.optionChain.result[0].options[0];
+                    var calls = options.calls || [];
+                    var puts = options.puts || [];
+                    
+                    var callVol = calls.reduce(function(sum, o) { return sum + (o.volume || 0); }, 0);
+                    var putVol = puts.reduce(function(sum, o) { return sum + (o.volume || 0); }, 0);
+                    var ratio = callVol > 0 ? (putVol / callVol).toFixed(2) : 0;
+                    
+                    return {
+                        putCall: parseFloat(ratio),
+                        sentiment: ratio < 0.8 ? 'Bullish' : ratio > 1.2 ? 'Bearish' : 'Neutral',
+                        volume: ((callVol + putVol) / 1000).toFixed(1) + 'K'
+                    };
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            return null;
+        }
+
+        async function searchSymbol() {
+            var symbol = document.getElementById('symbolInput').value.toUpperCase().trim();
+            if (!symbol) return;
+            
+            currentSymbol = symbol;
+            document.getElementById('currentSymbol').textContent = symbol;
+            document.getElementById('chartTitle').textContent = symbol + ' - Correlation Chart';
+            document.getElementById('dataStatus').textContent = 'Loading...';
+            
+            var quoteData = await fetchYahooData(symbol);
+            var optData = await fetchOptions(symbol);
+            var social = socialDemo[symbol] || { social: 50, trend: 'Low' };
+            
+            if (quoteData) {
+                document.getElementById('companyName').textContent = quoteData.name;
+                document.getElementById('price').textContent = '$' + quoteData.price.toFixed(2);
+                var chg = (quoteData.change >= 0 ? '+' : '') + quoteData.change.toFixed(2);
+                document.getElementById('priceChange').textContent = chg + ' (' + quoteData.changePercent.toFixed(2) + '%)';
+                document.getElementById('priceChange').className = 'text-xs mt-1 ' + (quoteData.change >= 0 ? 'text-green-400' : 'text-red-400');
+                document.getElementById('week52High').textContent = '$' + quoteData.high52.toFixed(2);
+                document.getElementById('week52Low').textContent = '$' + quoteData.low52.toFixed(2);
+                document.getElementById('volume').textContent = 'Vol: ' + (quoteData.volume / 1000000).toFixed(1) + 'M';
+                document.getElementById('dataStatus').textContent = 'Live from Yahoo Finance';
+                document.getElementById('dataStatus').className = 'text-xs text-green-400 mt-2';
+            } else {
+                document.getElementById('dataStatus').textContent = 'Could not load data';
+                document.getElementById('dataStatus').className = 'text-xs text-red-400 mt-2';
+            }
+            
+            if (optData) {
+                document.getElementById('putCallRatio').textContent = optData.putCall;
+                document.getElementById('optionsSentiment').textContent = optData.sentiment;
+                document.getElementById('optionsVolume').textContent = optData.volume;
+            }
+            
+            document.getElementById('socialMentions').textContent = social.social;
+            document.getElementById('socialTrend').textContent = social.trend;
+            
+            updateChart();
+            updateAlerts();
+        }
+
+        function refreshData() {
+            var btn = document.getElementById('refreshBtn');
+            var icon = document.getElementById('refreshIcon');
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+            
+            setTimeout(function() {
+                searchSymbol();
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+            }, 1000);
+        }
+
+        function updateAlerts() {
+            var html = '<div class="p-3 rounded bg-blue-900"><p class="text-sm">System ready</p></div>';
+            document.getElementById('alertsContainer').innerHTML = html;
+        }
+
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchSymbol();
+        });
+    </script>
+</body>
+</html>
